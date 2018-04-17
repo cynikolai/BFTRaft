@@ -23,32 +23,37 @@ class Server(object):
         self._lastLogIndex = 0
         self._lastLogTerm = None
 
-        self._state.set_server(self)
-        self._messageBoard.set_owner(self)
-
         # crypto
         self.crypto_enabled = crypto_enabled
         self.public_keys = public_keys
         self.private_key = private_key
 
+        self._state.set_server(self)
+        self._messageBoard.set_owner(self)
+
     def send_message(self, message):
+        if(self.crypto_enabled):
+            # Sign message
+            message_str = pickle.dumps(message.data)
+            message._hash = SHA256.new(message_str).digest()  
+            message._signature = self.private_key.sign(message.hash, '')
+
         for n in self._neighbors:
             message._receiver = n._name
             n.post_message(message)
 
     def send_message_response(self, message):
+        if(self.crypto_enabled):
+            # Sign message
+            message_str = pickle.dumps(message.data)
+            message._hash = SHA256.new(message_str).digest()  
+            message._signature = self.private_key.sign(message.hash, '')
+
         n = [n for n in self._neighbors if n._name == message.receiver]
         if(len(n) > 0):
             n[0].post_message(message)
 
     def post_message(self, message):
-
-        if(self.crypto_enabled):
-            # Sign message
-            message_str = pickle.dumps(message.data)
-            message_hash = SHA256.new(message_str).digest()   
-            message.signature = self.private_key.sign(message_hash, '')
-
         self._messageBoard.post_message(message)
 
     def on_message(self, message):
@@ -57,8 +62,7 @@ class Server(object):
             # Verify message
             message_str = pickle.dumps(message.data)       
             message_hash = SHA256.new(message_str).digest()
-            public_key = public_keys[message.sender]
-            if not public_key.verify(message_hash, message.signature):
+            if not self.public_keys[message.sender].verify(message_hash, message.signature):
                 return
 
         state, response = self._state.on_message(message)

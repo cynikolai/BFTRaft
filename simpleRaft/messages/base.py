@@ -15,6 +15,7 @@ class BaseMessage(object):
         self._data = data
         self._term = term
         self._signature = None
+        self._hash = None
 
     @property
     def receiver(self):
@@ -43,3 +44,7 @@ class BaseMessage(object):
     @property
     def signature(self):
         return self._signature
+
+    @property
+    def hash(self):
+        return self._hash
